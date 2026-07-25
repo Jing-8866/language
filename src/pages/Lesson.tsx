@@ -31,20 +31,41 @@ function Flashcard({ word, onNext }: { word: { word: string; translation: string
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   const speak = (text: string, lang: string) => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = lang;
-      utterance.rate = 0.9;
-      utterance.volume = 1;
-      // 预加载语音，避免首次调用无声
-      const voices = window.speechSynthesis.getVoices();
+    if (!('speechSynthesis' in window)) return;
+    const synth = window.speechSynthesis;
+    synth.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = lang;
+    utterance.rate = 0.9;
+    utterance.volume = 1;
+    utteranceRef.current = utterance;
+
+    const doSpeak = () => {
+      const voices = synth.getVoices();
       if (voices.length > 0) {
         const match = voices.find(v => v.lang.startsWith(lang.split('-')[0]));
         if (match) utterance.voice = match;
       }
-      utteranceRef.current = utterance; // 保持引用，防止 GC
-      window.speechSynthesis.speak(utterance);
+      synth.speak(utterance);
+    };
+
+    // 语音列表可能尚未加载，等待 voiceschanged 事件
+    const voices = synth.getVoices();
+    if (voices.length > 0) {
+      doSpeak();
+    } else {
+      const onVoicesChanged = () => {
+        synth.removeEventListener('voiceschanged', onVoicesChanged);
+        doSpeak();
+      };
+      synth.addEventListener('voiceschanged', onVoicesChanged);
+      // 超时兜底：500ms 后强制播放
+      setTimeout(() => {
+        synth.removeEventListener('voiceschanged', onVoicesChanged);
+        if (synth.speaking) return;
+        synth.speak(utterance);
+      }, 500);
     }
   };
 
@@ -193,20 +214,41 @@ function QuestionCard({
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   const speak = (text: string, lang: string = 'en-US') => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = lang;
-      utterance.rate = 0.85;
-      utterance.volume = 1;
-      // 预加载语音，避免首次调用无声
-      const voices = window.speechSynthesis.getVoices();
+    if (!('speechSynthesis' in window)) return;
+    const synth = window.speechSynthesis;
+    synth.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = lang;
+    utterance.rate = 0.85;
+    utterance.volume = 1;
+    utteranceRef.current = utterance;
+
+    const doSpeak = () => {
+      const voices = synth.getVoices();
       if (voices.length > 0) {
         const match = voices.find(v => v.lang.startsWith('en'));
         if (match) utterance.voice = match;
       }
-      utteranceRef.current = utterance; // 保持引用，防止 GC
-      window.speechSynthesis.speak(utterance);
+      synth.speak(utterance);
+    };
+
+    // 语音列表可能尚未加载，等待 voiceschanged 事件
+    const voices = synth.getVoices();
+    if (voices.length > 0) {
+      doSpeak();
+    } else {
+      const onVoicesChanged = () => {
+        synth.removeEventListener('voiceschanged', onVoicesChanged);
+        doSpeak();
+      };
+      synth.addEventListener('voiceschanged', onVoicesChanged);
+      // 超时兜底：500ms 后强制播放
+      setTimeout(() => {
+        synth.removeEventListener('voiceschanged', onVoicesChanged);
+        if (synth.speaking) return;
+        synth.speak(utterance);
+      }, 500);
     }
   };
 
