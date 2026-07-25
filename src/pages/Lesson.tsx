@@ -28,6 +28,7 @@ import type { Question, ModuleType } from '../types';
 function Flashcard({ word, onNext }: { word: { word: string; translation: string; pronunciation: string; example: string; exampleTranslation: string }; onNext: () => void }) {
   const [flipped, setFlipped] = useState(false);
   const [showExample, setShowExample] = useState(false);
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   const speak = (text: string, lang: string) => {
     if ('speechSynthesis' in window) {
@@ -36,6 +37,13 @@ function Flashcard({ word, onNext }: { word: { word: string; translation: string
       utterance.lang = lang;
       utterance.rate = 0.9;
       utterance.volume = 1;
+      // 预加载语音，避免首次调用无声
+      const voices = window.speechSynthesis.getVoices();
+      if (voices.length > 0) {
+        const match = voices.find(v => v.lang.startsWith(lang.split('-')[0]));
+        if (match) utterance.voice = match;
+      }
+      utteranceRef.current = utterance; // 保持引用，防止 GC
       window.speechSynthesis.speak(utterance);
     }
   };
@@ -182,6 +190,7 @@ function QuestionCard({
   const [recording, setRecording] = useState(false);
   const [spokenText, setSpokenText] = useState('');
   const recognitionRef = useRef<any>(null);
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   const speak = (text: string, lang: string = 'en-US') => {
     if ('speechSynthesis' in window) {
@@ -190,6 +199,13 @@ function QuestionCard({
       utterance.lang = lang;
       utterance.rate = 0.85;
       utterance.volume = 1;
+      // 预加载语音，避免首次调用无声
+      const voices = window.speechSynthesis.getVoices();
+      if (voices.length > 0) {
+        const match = voices.find(v => v.lang.startsWith('en'));
+        if (match) utterance.voice = match;
+      }
+      utteranceRef.current = utterance; // 保持引用，防止 GC
       window.speechSynthesis.speak(utterance);
     }
   };
